@@ -270,14 +270,14 @@ let RM=null,HOST={on:false,qn:0,seq:0,open:false,winner:null,out:[],lk:0,lt:null
 async function pingRtt(){try{const t=performance.now();await fetch('/api/info',{cache:'no-store'});PH.rtt=Math.round((performance.now()-t)/50)*50;const e=$('rtt');if(e)e.textContent=rttTxt()}catch(e){}}
 const rttTxt=()=>PH.rtt==null?'':'Связь: '+PH.rtt+' мс'+(PH.rtt>800?' — слабый сигнал':'');
 setInterval(()=>{if(S.role==='phone'&&document.visibilityState==='visible')pingRtt()},4000);
-setInterval(()=>{try{if(!RM)return;if(HOST.on&&S.role==='host')pubHost();else if(S.role==='phone'&&PH.name){const pp={role:'player',pname:PH.name};if(PH.rtt!=null)pp.rtt=PH.rtt;if(PH.av)pp.avatar=PH.av;RM.presence(pp).catch(()=>{})}}catch(e){}},10000);
-function peersChanged(){syncAv();hostCheck();updPhone();viewSync();const c=$('conn');if(c)c.textContent=connText()}
+setInterval(()=>{try{if(!RM)return;if(S.role==='viewer')RM.presence({role:'viewer'}).catch(()=>{});else if(HOST.on&&S.role==='host')pubHost();else if(S.role==='phone'&&PH.name){const pp={role:'player',pname:PH.name};if(PH.rtt!=null)pp.rtt=PH.rtt;if(PH.av)pp.avatar=PH.av;RM.presence(pp).catch(()=>{})}}catch(e){}},10000);
+function peersChanged(){holdCheck();syncAv();hostCheck();updPhone();viewSync();const c=$('conn');if(c)c.textContent=connText()}
 function connText(){if(!HOST.on)return'';if(!RM)return'📱 Связь недоступна';const n=RM.peers().filter(p=>p.presence&&p.presence.role==='player'&&p.presence.pname).map(p=>String(p.presence.pname)+(p.presence.rtt!=null?' ('+p.presence.rtt+' мс)':''));return'📱 Подключены: '+(n.length?[...new Set(n)].join(', '):'пока никого')}
 function setPhones(on){if(on&&!RM){note('Связь с телефонами недоступна. Перезагрузите страницу.');S.phones=false;render();return}
  S.phones=on;HOST.on=on;if(on){pubAv();pubHost()}else if(RM)RM.presence({role:null,players:null,sc:null,qn:null,seq:null,open:null,winner:null,out:null}).catch(()=>{});const c=$('conn');if(c)c.textContent=connText()}
 function pubHost(){if(!RM||!HOST.on)return;
  const cats=S.rounds[S.ri]||[],inG=S.game&&['board','inter','final'].includes(S.screen),qq=S.q&&cats[S.q.ci]?cats[S.q.ci].qs[S.q.r]:null,shown=!!(S.q&&(S.q.show||S.q.ok>=0));
- RM.presence({role:'host',players:S.players.map(p=>p.name),sc:S.players.map(p=>p.score),avs:S.players.map(p=>p.av||null),qn:HOST.qn,seq:HOST.seq,open:HOST.open,winner:HOST.winner,out:HOST.out,lk:HOST.lk?1:null,fd:HOST.fd?1:null,pm:HOST.pm||null,pw:HOST.pw?1:null,
+ RM.presence({role:'host',players:S.players.map(p=>p.name),sc:S.players.map(p=>p.score),avs:S.players.map(p=>p.av||null),qn:HOST.qn,seq:HOST.seq,open:HOST.open,winner:HOST.winner,out:HOST.out,lk:HOST.lk?1:null,hd:HOST.hd?1:null,hid:HOST.hd?HOST.hid:null,fd:HOST.fd?1:null,pm:HOST.pm||null,pw:HOST.pw?1:null,
   scr:{s:inG?S.screen:'idle',ri:S.ri,nr:S.rounds.length,it:VIT},cn:cats.map(c=>clipB(c.name,48)),dn:cats.map(c=>c.qs.reduce((m,x,i)=>m|(x.done?1<<i:0),0)),cur:S.cur,
   q:qq?{ci:S.q.ci,r:S.q.r,n:VQ}:null,qt:qq?clipB(qq.q,700):null,qa:qq&&shown?clipB(qq.a,400):null,qm:qq&&qq.m?{i:qq.m.id,t:qq.m.type}:null,qam:qq&&shown&&qq.am?{i:qq.am.id,t:qq.am.type}:null,sh:qq&&S.q.show?1:null,ok:qq&&S.q.ok>=0?S.q.ok:null,
   tm:qq&&S.tmOn&&VT&&!shown?{d:tmSec(),n:VT}:null}).catch(()=>{})}
@@ -314,7 +314,7 @@ function updPhone(force){
    if(!hp.fd){k='fin0';h=ttl+'<div class="center" style="text-align:center;margin-top:8vh"><div style="font-size:64px">🥁</div><div style="font-size:26px;margin-top:10px">Подводим итоги…</div></div>'+bk}
    else{k='fin1'+place+':'+mine;h=ttl+`<div class="center" style="text-align:center;position:relative;z-index:6;margin-top:5vh"><div style="font-size:80px">${place===1?'🏆':place===2?'🥈':place===3?'🥉':'🎉'}</div><div style="font-size:32px;font-weight:800;margin:10px 0">${place===1?'Вы победили!':place+' место'}</div><div style="font-size:24px;color:#ffd54a">Ваши очки: ${mine}</div><div style="margin-top:16px;color:#9fb0ff;font-size:20px">Спасибо за игру!</div></div>`+bk;if(PH.finK!==k){PH.finK=k;try{navigator.vibrate&&navigator.vibrate(place===1?[150,80,150,80,300]:[120])}catch(e){}}}}
   else if(PH.av===undefined&&AVL.length){const mi=pl.indexOf(PH.name),taken=(hp.avs||[]).filter((x,j)=>x&&j!==mi);k='a'+AVL.length+taken.join();h='<h1>Выберите аватар</h1><div class="center" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">'+AVL.map(a=>`<button ${taken.includes(a.id)?'disabled':''} style="padding:6px" onclick="pickAvatar('${a.id}')">${avTag(a.id,72)}</button>`).join('')+'</div><div class="btns"><button class="sec" onclick="pickAvatar(null)">Без аватара</button></div>'+bk}
-  else{const me=PH.name,key=hp.qn+':'+hp.seq,sc=(hp.sc||[])[pl.indexOf(me)];let st='go',lb='ЖМИ!',co='#e11';
+  else{if(hp.hd&&hp.hid&&PH.ackId!==hp.hid){PH.ackId=hp.hid;RM.presence({ack:hp.hid}).catch(()=>{})}const me=PH.name,key=hp.qn+':'+hp.seq,sc=(hp.sc||[])[pl.indexOf(me)];let st='go',lb='ЖМИ!',co='#e11';
    if(hp.winner===me){st='win';lb='ВАШ ОТВЕТ!';co='#2ecc71'}
    else if(hp.winner){st='x';lb='Отвечает: '+hp.winner;co='#555'}
    else if(hp.lk){st='x';lb='Приготовьтесь…';co='#c60'}
@@ -529,8 +529,8 @@ function setRole(r){S.role=r;document.body.classList.toggle('viewer',r==='viewer
 function hostRole(){if(hostAuthed())hostGo();else askPass(hostGo)}
 function hostGo(){setRole('host');if(ONLINE&&RM){S.phones=true;HOST.on=true;pubAv();pubHost()}go('setup')}
 function phoneRole(){setRole('phone');go('phone')}
-function viewRole(){setRole('viewer');MU.unlocked=true;VW={it:-1,n:-1,sh:0,ok:-1,win:null,tmn:-1,seq:-1,sc:null,sig:''};go('viewer');viewSync()}
-function leaveView(){const pe=$('pre');if(pe)pe.remove();setRole(null);VW.it=-1;S.q=null;$('mod').innerHTML='';go('role')}
+function viewRole(){setRole('viewer');if(RM)RM.presence({role:'viewer'}).catch(()=>{});MU.unlocked=true;VW={it:-1,n:-1,sh:0,ok:-1,win:null,tmn:-1,seq:-1,sc:null,sig:''};go('viewer');viewSync()}
+function leaveView(){const pe=$('pre');if(pe)pe.remove();if(RM)RM.presence({role:null,ack:null}).catch(()=>{});setRole(null);VW.it=-1;S.q=null;$('mod').innerHTML='';go('role')}
 function roleScr(){const bs='width:100%;font-size:clamp(22px,4vw,30px);padding:22px;margin:8px 0';
  return `${TTL()}<div class="center" style="text-align:center;margin-top:5vh"><div style="color:#9fb0ff;margin-bottom:16px;font-size:20px">Кто вы?</div><button onclick="hostRole()" style="${bs}">🎤 Ведущий</button>`+
  (ONLINE?`<button class="sec" onclick="viewRole()" style="${bs}">🖥 Экран игры (компьютер)</button><button class="sec" onclick="phoneRole()" style="${bs}">📱 Кнопка (смартфон)</button>`
@@ -551,6 +551,8 @@ function viewPre(hp){
  if(!need.length){el.textContent='✓ Медиа раунда загружены';el.style.display='block';clearTimeout(PF.hideT);PF.hideT=setTimeout(()=>{if(!PF.run&&el.textContent[0]==='✓')el.style.display='none'},5000);return}
  if(PF.auto&&!PF.tried){preRun();return}
  el.innerHTML='<button onclick="preRun()">⬇ Загрузить медиа раунда заранее ('+need.length+' файл.)</button>';el.style.display='block'}
+async function preFetch(id){if(PRE[id])return true;try{const r=await fetch('/media/'+encodeURIComponent(id),{cache:'no-store'});if(!r.ok)return false;const parts=[];if(r.body&&r.body.getReader){const rd=r.body.getReader();for(;;){const c=await rd.read();if(c.done)break;parts.push(c.value)}}else parts.push(new Uint8Array(await r.arrayBuffer()));PRE[id]=URL.createObjectURL(new Blob(parts,{type:r.headers.get('Content-Type')||''}));return true}catch(e){return false}}
+async function viewAck(hp){const id=hp.hid;if(!id||VW.ackId===id)return;VW.ackId=id;if(window.mediaUrl&&hp.qm&&hp.qm.i)await preFetch(hp.qm.i);if(RM)RM.presence({ack:id}).catch(()=>{})}
 async function preRun(){if(PF.run||!PF.hp)return;const pm=Array.isArray(PF.hp.pm)?PF.hp.pm:[],todo=pm.filter(x=>!PRE[x[0]]);if(!todo.length)return;
  PF.run=true;PF.auto=true;PF.tried=true;PF.pct=0;preDraw();let i=0;
  for(const x of todo){const id=x[0];try{const r=await fetch('/media/'+encodeURIComponent(id),{cache:'no-store'});if(r.ok){const tot=+r.headers.get('Content-Length')||0,rd=r.body&&r.body.getReader?r.body.getReader():null,parts=[];let got=0;
@@ -579,7 +581,8 @@ function viewSync(){
  if(S.screen!==want||itCh){S.intro=itCh;VW.it=scr.it;VW.sig=sig;go(want)}
  else if(want==='board'&&sig!==VW.sig&&!INTRO){VW.sig=sig;render()}
  VW.it=scr.it;
- const q=hp.q;
+ if(hp.hd&&hp.q)viewAck(hp);
+ const q=hp.hd?null:hp.q;
  if(q&&q.n!==VW.n&&S.cats[q.ci]){
   VW.n=q.n;VW.sh=0;VW.ok=-1;VW.win=null;VW.tmn=-1;VW.seq=hp.seq;VW.lk=!!hp.lk;
   const cell=S.cats[q.ci].qs[q.r];cell.q=hp.qt||'';cell.m=null;cell.am=null;if(window.mediaUrl&&hp.qm){cell.m={id:hp.qm.i,type:hp.qm.t,name:''};MC[hp.qm.i]=window.mediaUrl(hp.qm.i)}S.q={ci:q.ci,r:q.r,show:false,wrong:[]};
@@ -647,7 +650,20 @@ function showOk(i){S.q.ok=i;S.cats[S.q.ci].qs[S.q.r].done=true;saveGame();tmStop
  $('mod').innerHTML=`<div class="ov"><div style="font-size:clamp(36px,7vw,72px);color:#2ecc71;font-weight:800">✓ ВЕРНО!</div><div class="meta" style="margin-top:10px;font-size:22px">${avTag(S.players[i].av,56)}${esc(S.players[i].name)} +${V[S.q.r]}</div><div class="a" style="font-size:clamp(28px,5vw,56px);margin:24px 0">${esc(q.a)}${mediaHtml(q,'am')}</div><div class="host-only" style="margin:0 0 22px;font-size:20px"><div style="color:#9fb0ff;margin-bottom:8px">Дополнительные баллы (например, за устный вопрос)</div><select id="bp" style="font-size:20px;padding:8px;border-radius:8px">${S.players.map((p,k)=>`<option value="${k}" ${k===i?'selected':''}>${esc(p.name)}</option>`).join('')}</select> <input id="bv" type="number" step="50" min="0" value="${V[0]}" style="font-size:20px;padding:8px;width:110px;border-radius:8px"> <button class="ok" onclick="bonus(1)">+ Добавить</button> <button class="bad" onclick="bonus(-1)">− Снять</button><div id="bl" style="margin-top:8px;color:#ffd54a"></div></div><button class="ok" style="font-size:22px;padding:14px 28px" onclick="closeQ(true)">Продолжить</button></div>`}
 function bonus(sg){const k=+$('bp').value,v=Math.abs(parseInt($('bv').value,10)||0);if(!v||!S.players[k])return;S.players[k].score+=sg*v;saveGame();sfx(sg>0?1:0);pubHost();const l=$('bl');if(l)l.textContent+=(l.textContent?'   ':'')+S.players[k].name+' '+(sg>0?'+':'−')+v+' (итого '+S.players[k].score+')'}
 function showA(){tmStop();const e=$('tm');if(e)e.textContent='';S.q.show=true;$('ans').style.display='block';$('showb').style.display='none';pubHost()}
-async function openQ(ci,r){const q=S.cats[ci].qs[r];if(q.m)await loadM(q.m.id);if(q.am)await loadM(q.am.id);if(ONLINE&&HOST.on&&window.mediaUrl){await upMedia(q.m);await upMedia(q.am)}S.q={ci,r,show:false,wrong:[]};$('mod').innerHTML=modal();typeQ(q.q);if(S.voice)say(q.q);VQ++;VT=0;hostOpen()}
+let OPENING=false;
+async function openQ(ci,r){if(S.q||OPENING)return;OPENING=true;try{const q=S.cats[ci].qs[r];if(q.m)await loadM(q.m.id);if(q.am)await loadM(q.am.id);if(ONLINE&&HOST.on&&window.mediaUrl){await upMedia(q.m);await upMedia(q.am)}S.q={ci,r,show:false,wrong:[]};VQ++;VT=0;if(HOST.on&&RM&&holdPeers().length)startHold();else releaseQ()}finally{OPENING=false}}
+/* Вопрос показывается, только когда сигнал дошёл до всех подключённых экранов зрителей и телефонов (или истекло время ожидания) */
+let HOLD={};
+function holdPeers(){return RM?RM.peers().filter(p=>!p.sameTab&&p.presence&&(p.presence.role==='viewer'||(p.presence.role==='player'&&p.presence.pname))):[]}
+function holdItems(){const ps=holdPeers(),nv=ps.filter(p=>p.presence.role==='viewer').length;let vi=0;return ps.map(p=>({ok:p.presence.ack===HOST.hid,t:p.presence.role==='viewer'?'🖥 Экран зрителя'+(nv>1?' '+(++vi):''):'📱 '+p.presence.pname}))}
+function startHold(){HOST.hd=1;HOST.hid=Math.random().toString(36).slice(2,8);HOLD.t0=Date.now();pubHost();
+ const d=document.createElement('div');d.id='hold';d.className='ov';d.style.zIndex=40;
+ d.innerHTML='<div class="q" style="font-size:clamp(22px,4vw,34px)">Передаю вопрос участникам…</div><div id="holdl" style="font-size:24px;margin:16px;line-height:1.8"></div><div class="btns"><button class="ok" onclick="releaseQ()">Показать сейчас</button><button class="sec" onclick="cancelHold()">Отмена</button></div>';
+ document.body.appendChild(d);clearTimeout(HOLD.to);HOLD.to=setTimeout(()=>{if(HOST.hd)releaseQ()},15000);holdCheck()}
+function holdCheck(){if(!HOST.hd)return;const it=holdItems();if(!it.length||it.every(x=>x.ok)){releaseQ();return}
+ const e=$('holdl');if(e)e.innerHTML=it.map(x=>(x.ok?'<span style="color:#2ecc71">✓ ':'<span style="color:#ffd54a">⏳ ')+esc(x.t)+'</span>').join('<br>')+'<div style="font-size:16px;color:#9fb0ff;margin-top:8px">Ждём: '+it.filter(x=>!x.ok).length+' из '+it.length+'</div>'}
+function releaseQ(){clearTimeout(HOLD.to);const h=$('hold');if(h)h.remove();if(!S.q)return;HOST.hd=0;const q=S.cats[S.q.ci].qs[S.q.r];$('mod').innerHTML=modal();typeQ(q.q);if(S.voice)say(q.q);hostOpen()}
+function cancelHold(){clearTimeout(HOLD.to);const h=$('hold');if(h)h.remove();HOST.hd=0;S.q=null;hostClose()}
 function modal(){
  const {ci,r,show,wrong}=S.q;const c=S.cats[ci],q=c.qs[r],v=V[r];
  return `<div class="ov"><div class="meta">${esc(c.name)} — ${v}</div><div class="q" id="qt"></div><div id="mslot">${mediaHtml(q)}</div><div id="win" style="font-size:30px;color:#2ecc71;margin:6px 0"></div><div id="tm" onclick="tmStart()" title="Нажмите, чтобы запустить заново" style="font-size:44px;font-weight:800;color:#ffd54a;margin:4px 0;cursor:pointer"></div><div style="margin:8px"><button class="sec" onclick="say(S.cats[S.q.ci].qs[S.q.r].q)">🔊 Озвучить</button></div>`+
