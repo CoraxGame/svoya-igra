@@ -216,6 +216,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/api/info":
             urls = [] if CLOUD else ["http://%s:%d" % (ip, PORT) for ip in lan_addresses()]
             return self._json({"urls": urls, "public": PUBLIC_URL})
+        if path == "/api/state":
+            qs = urllib.parse.parse_qs(url.query)
+            try:
+                cpv = int((qs.get("pv") or ["-1"])[0])
+                cdv = int((qs.get("dv") or ["-1"])[0])
+            except ValueError:
+                cpv = cdv = -1
+            with cond:
+                out = {"pv": peers_ver, "dv": db_ver}
+                if cpv != peers_ver:
+                    out["peers"] = peers_snapshot()
+                if cdv != db_ver:
+                    out["db"] = db
+                return self._json(out)
         if path == "/api/events":
             qs = urllib.parse.parse_qs(url.query)
             cid = (qs.get("id") or [""])[0][:64]
@@ -283,9 +297,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     dbs = json.dumps(db, ensure_ascii=False) if dv != seen_d else None
                 out = b""
                 if snap is not None:
-                    out += ("event: peers\ndata: %s\n\n" % json.dumps(snap, ensure_ascii=False)).encode("utf-8")
+                    out += ("event: peers\nid: %d\ndata: %s\n\n" % (pv, json.dumps(snap, ensure_ascii=False))).encode("utf-8")
                 if dbs is not None:
-                    out += ("event: db\ndata: %s\n\n" % dbs).encode("utf-8")
+                    out += ("event: db\nid: %d\ndata: %s\n\n" % (dv, dbs)).encode("utf-8")
                 if not out:
                     out = b": ping\n\n"
                 self.wfile.write(out)
