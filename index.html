@@ -105,6 +105,7 @@ input,textarea{font:inherit;border-radius:8px;border:1px solid #4a5bb0;backgroun
 #sp-onl{opacity:0;transition:opacity 1.2s;font-size:clamp(14px,2.4vw,28px)!important;left:10px!important}
 #sp-onl.in{opacity:1}
 body.viewer #mod .ov button,body.viewer #mod .btns,body.viewer #mod .score,body.viewer #mod #showb{display:none!important}
+body.viewer .host-only{display:none!important}
 body.viewer #app .cell,body.viewer #app .pl{pointer-events:none}
 body.viewer #app .btns,body.viewer #app p.meta,body.viewer #fb{display:none!important}
 </style></head><body><div id="app"></div><div id="mod"></div>
@@ -113,7 +114,7 @@ body.viewer #app .btns,body.viewer #app p.meta,body.viewer #fb{display:none!impo
 (function(){
  var ID=(function(){try{var v=sessionStorage.getItem('svoya-cid');if(!v){v='c'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);sessionStorage.setItem('svoya-cid',v)}return v}catch(e){return 'c'+Math.random().toString(36).slice(2,12)}})();
  var peers=[],pcb=[],dbdocs={},dbsubs={},myP={},es=null;
- function post(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b),keepalive:true}).then(function(r){return r.json()})}
+ function post(u,b){var bd;return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:(bd=JSON.stringify(b)),keepalive:bd.length<60000}).then(function(r){return r.json()})}
  function snap(p){var d=dbdocs[p];return {exists:d!==undefined&&d!==null,data:function(){return d}}}
  function connect(){
   if(es)return;
@@ -155,7 +156,8 @@ body.viewer #app .btns,body.viewer #app p.meta,body.viewer #fb{display:none!impo
  window.mediaUrl=function(id){return '/media/'+id};
  window.lanText=function(){return window.LANURLS.length?'\uD83D\uDCF1 Телефонам: откройте '+window.LANURLS.join('   или   '):''};
  try{fetch('/api/info').then(function(r){return r.json()}).then(function(j){window.LANURLS=j.urls||[];window.__PUB=j.public||null;var e=document.getElementById('lanurl');if(e)e.textContent=window.lanText();var bx=document.getElementById('onlbox'),ux=document.getElementById('onlurl');if(bx&&ux&&window.__PUB){ux.textContent=window.__PUB;bx.style.display=''}}).catch(function(){})}catch(e){}
- window.addEventListener('pagehide',function(){try{navigator.sendBeacon('/api/leave',new Blob([JSON.stringify({id:ID})],{type:'application/json'}))}catch(e){}});
+ setInterval(function(){if(es&&es.readyState===2){es=null;connect()}},10000);
+ window.addEventListener('pagehide',function(ev){if(ev&&ev.persisted)return;try{navigator.sendBeacon('/api/leave',new Blob([JSON.stringify({id:ID})],{type:'application/json'}))}catch(e){}});
 })();
 </script>
 <script>
@@ -172,6 +174,21 @@ let S={rounds:[DEF()],ri:0,ei:0,get cats(){return this.rounds[this.screen==='edi
 try{const j=localStorage.getItem('svoya');if(j){const o=JSON.parse(j);S.voice=!!o.voice;S.music=o.music!==false;S.splash=o.splash!==false;S.studio=o.studio||'';S.lockSec=o.lockSec==null?3:+o.lockSec;S.tmOn=!!o.tmOn;S.tmSec=+o.tmSec||30;if(o.rounds&&o.rounds.length)S.rounds=o.rounds;else if(o.cats&&o.cats.length)S.rounds=[o.cats];if(o.names&&o.names.length)S.players=o.names.map((n,i)=>({name:n,score:0,av:(o.avs||[])[i]||null}))}}catch(e){}
 try{const g=JSON.parse(localStorage.getItem('svoya-game')||'null');if(g&&g.rounds&&g.players){S.rounds=g.rounds;S.players=g.players;S.ri=g.ri||0;S.cur=g.cur||0;S.gs=g.screen||'board';S.game=true;S.screen=hostAuthed()?S.gs:'role'}}catch(e){}
 function saveGame(){if(!S.game)return;if(['board','inter','final'].includes(S.screen))S.gs=S.screen;try{localStorage.setItem('svoya-game',JSON.stringify({players:S.players,rounds:S.rounds,ri:S.ri,cur:S.cur,screen:S.gs||'board'}))}catch(e){}}
+function askEmergency(){const d=document.createElement('div');d.className='ov';d.style.zIndex=50;
+ const t=document.createElement('div');t.className='q';t.style.fontSize='clamp(22px,4vw,34px)';t.textContent='⚠ Экстренно завершить игру? Итоги показаны не будут, вы вернётесь в главное меню.';
+ const sc=document.createElement('div');sc.className='meta';sc.style.cssText='font-size:20px;margin:10px 0 18px;color:#ffd54a';sc.textContent='Сейчас: раунд '+(S.ri+1)+'. '+S.players.map(p=>p.name+' — '+p.score).join(', ');
+ const r=document.createElement('div');r.className='btns';
+ const a=document.createElement('button');a.className='ok';a.textContent='💾 Сохранить результаты и выйти';a.onclick=()=>{d.remove();doEmergency(true)};
+ const b=document.createElement('button');b.className='bad';b.textContent='Выйти без сохранения';b.onclick=()=>{d.remove();doEmergency(false)};
+ const c=document.createElement('button');c.className='sec';c.textContent='Отмена';c.onclick=()=>d.remove();
+ r.append(a,b,c);d.append(t,sc,r);document.body.appendChild(d)}
+function getSaved(){try{const g=JSON.parse(localStorage.getItem('svoya-saved')||'null');return g&&g.rounds&&g.players?g:null}catch(e){return null}}
+function doEmergency(keep){tmStop();clearInterval(TT);try{speechSynthesis.cancel()}catch(e){}
+ let ok=true;if(keep){try{localStorage.setItem('svoya-saved',JSON.stringify({players:S.players,rounds:S.rounds,ri:S.ri,cur:S.cur,screen:S.screen==='inter'?'inter':'board',ts:Date.now()}))}catch(e){ok=false}}
+ if(S.q){S.q=null;hostClose()}const m=$('mod');if(m)m.innerHTML='';endGame();pubHost();
+ if(keep)note(ok?'Результаты сохранены. В главном меню нажмите «Продолжить сохранённую игру».':'Не удалось сохранить результаты в этом браузере.')}
+function resumeSaved(){const g=getSaved();if(!g)return;S.rounds=g.rounds;S.players=g.players;S.ri=g.ri||0;S.cur=g.cur||0;S.gs=g.screen||'board';S.game=true;S.q=null;try{localStorage.removeItem('svoya-saved')}catch(e){}pubHost();go(S.gs)}
+function dropSaved(){ask('Удалить сохранённую игру?',()=>{try{localStorage.removeItem('svoya-saved')}catch(e){}render()})}
 function endGame(){S.game=false;try{localStorage.removeItem('svoya-game')}catch(e){}go('setup')}
 function resume(){go(S.gs||'board')}
 function askEnd(){const last=S.ri>=S.rounds.length-1;ask(last?'Завершить игру и показать итоги?':'Завершить раунд '+(S.ri+1)+'? Оставшиеся вопросы раунда будут пропущены.',endRound)}
@@ -195,7 +212,7 @@ function render(){
  pubHost();
 }
 function setup(){
- return `${TTL()}<div class="center">${S.game?'<div class="btns"><button class="ok" style="font-size:20px" onclick="resume()">▶ Продолжить игру</button></div>':''}<label style="display:block;text-align:center;margin:10px 0 16px"><input type="checkbox" style="width:auto" ${S.voice?'checked':''} onchange="S.voice=this.checked;save();if(this.checked)say('Озвучка включена')"> 🔊 Озвучивать вопросы</label><label style="display:block;text-align:center;margin:0 0 6px"><input type="checkbox" style="width:auto" ${S.phones?'checked':''} onchange="setPhones(this.checked)"> 📱 Кнопка-ответ на смартфонах игроков</label><div id="conn" style="text-align:center;color:#9fb0ff;margin-bottom:12px">${esc(connText())}</div><div id="lanurl" style="text-align:center;color:#ffd54a;font-size:18px;margin-bottom:12px">${esc(lanText())}</div>${ONLINE?`<div id="onlbox" style="text-align:center;color:#9fb0ff;margin-bottom:12px;${onlUrl()?'':'display:none'}">🌐 Ссылка для онлайн-игроков:<div id="onlurl" style="color:#ffd54a;font-size:18px;word-break:break-all;user-select:all">${esc(onlUrl())}</div></div>`:''}<div style="text-align:center;margin:0 0 14px"><label><input type="checkbox" style="width:auto" ${S.tmOn?'checked':''} onchange="S.tmOn=this.checked;save()"> ⏱ Таймер на ответ:</label> <input type="number" min="5" max="300" value="${tmSec()}" style="width:80px" onchange="S.tmSec=Math.max(5,Math.min(300,+this.value||30));this.value=S.tmSec;save()"> сек</div><div style="text-align:center;margin:0 0 14px">🔒 Кнопки включаются через <input type="number" min="0" max="30" value="${lockSec()}" style="width:70px" onchange="S.lockSec=Math.max(0,Math.min(30,+this.value||0));this.value=S.lockSec;save()"> сек после вопроса</div><h3>Игроки</h3>`+
+ return `${TTL()}<div class="center">${S.game?'<div class="btns"><button class="ok" style="font-size:20px" onclick="resume()">▶ Продолжить игру</button></div>':''}${(()=>{const g=!S.game&&getSaved();return g?`<div class="btns"><button class="ok" style="font-size:20px" onclick="resumeSaved()">💾 Продолжить сохранённую игру</button><button class="sec" onclick="dropSaved()">Удалить</button></div><div class="meta" style="text-align:center;color:#ffd54a;margin-bottom:10px">Раунд ${(g.ri||0)+1}: ${g.players.map(p=>esc(p.name)+' — '+p.score).join(', ')}</div>`:''})()}<label style="display:block;text-align:center;margin:10px 0 16px"><input type="checkbox" style="width:auto" ${S.voice?'checked':''} onchange="S.voice=this.checked;save();if(this.checked)say('Озвучка включена')"> 🔊 Озвучивать вопросы</label><label style="display:block;text-align:center;margin:0 0 6px"><input type="checkbox" style="width:auto" ${S.phones?'checked':''} onchange="setPhones(this.checked)"> 📱 Кнопка-ответ на смартфонах игроков</label><div id="conn" style="text-align:center;color:#9fb0ff;margin-bottom:12px">${esc(connText())}</div><div id="lanurl" style="text-align:center;color:#ffd54a;font-size:18px;margin-bottom:12px">${esc(lanText())}</div>${ONLINE?`<div id="onlbox" style="text-align:center;color:#9fb0ff;margin-bottom:12px;${onlUrl()?'':'display:none'}">🌐 Ссылка для онлайн-игроков:<div id="onlurl" style="color:#ffd54a;font-size:18px;word-break:break-all;user-select:all">${esc(onlUrl())}</div></div>`:''}<div style="text-align:center;margin:0 0 14px"><label><input type="checkbox" style="width:auto" ${S.tmOn?'checked':''} onchange="S.tmOn=this.checked;save()"> ⏱ Таймер на ответ:</label> <input type="number" min="5" max="300" value="${tmSec()}" style="width:80px" onchange="S.tmSec=Math.max(5,Math.min(300,+this.value||30));this.value=S.tmSec;save()"> сек</div><div style="text-align:center;margin:0 0 14px">🔒 Кнопки включаются через <input type="number" min="0" max="30" value="${lockSec()}" style="width:70px" onchange="S.lockSec=Math.max(0,Math.min(30,+this.value||0));this.value=S.lockSec;save()"> сек после вопроса</div><h3>Игроки</h3>`+
  S.players.map((p,i)=>`<div class="row"><button class="sec" style="padding:4px 8px;min-width:52px" onclick="pickAv(${i})">${avTag(p.av,40)||'🙂'}</button><input value="${esc(p.name)}" oninput="S.players[${i}].name=this.value;save();pubHost()"><button class="sec" onclick="delP(${i})" ${S.players.length<2?'disabled':''}>✕</button></div>`).join('')+
  `<div class="ed" style="text-align:center"><b>🖼 Аватары</b> <span style="color:#9fb0ff;font-size:14px">фото автоматически становятся пиксельными</span><div id="avs" style="margin:8px 0">${avGrid()}</div><button class="sec" onclick="this.nextElementSibling.click()">+ Добавить фото</button><input type="file" hidden multiple accept="image/*" onchange="addAv(this)"></div><div class="btns"><button class="sec" onclick="addP()" ${S.players.length>=6?'disabled':''}>+ Игрок</button></div>
  <div class="btns"><button onclick="start()">▶ Начать игру</button><button class="sec" onclick="go('role')">← Выбор роли</button><button class="sec" onclick="go('edit')">✎ Редактор вопросов</button></div></div>`;
@@ -210,7 +227,7 @@ function board(){
  
  S.cats.forEach((c,ci)=>{h+=`<div class="cat ${INTRO?'hid':''}">${esc(c.name)}</div>`;V.forEach((v,r)=>{const q=c.qs[r];const em=!q.q.trim()&&!q.m;
   h+=`<button class="cell ${q.done?'done':''} ${em?'empty':''} ${INTRO?'hv':''}" ${q.done||em?'disabled':''} onclick="openQ(${ci},${r})">${q.done?'':v}</button>`})});
- h+=`</div></div><div class="btns"><button class="sec" onclick="go('setup')">В меню</button><button onclick="askEnd()">🏁 ${S.ri<S.rounds.length-1?'Закончить раунд':'Закончить игру'}</button></div><div id="conn" style="text-align:center;color:#9fb0ff;margin:8px 0">${esc(connText())}</div><p class="meta" style="text-align:center;color:#9fb0ff">Рамка у игрока — чей выбор вопроса. Нажмите на имя, чтобы передать ход.</p>`;
+ h+=`</div></div><div class="btns"><button class="sec" onclick="go('setup')">В меню</button><button class="bad" onclick="askEmergency()">⛔ Экстренно завершить</button><button onclick="askEnd()">🏁 ${S.ri<S.rounds.length-1?'Закончить раунд':'Закончить игру'}</button></div><div id="conn" style="text-align:center;color:#9fb0ff;margin:8px 0">${esc(connText())}</div><p class="meta" style="text-align:center;color:#9fb0ff">Рамка у игрока — чей выбор вопроса. Нажмите на имя, чтобы передать ход.</p>`;
  return h;
 }
 const MC={};let DB=null;
@@ -234,7 +251,8 @@ function mediaHtml(q,k){const m=q[k||'m'];if(!m)return'';const d=MC[m.id];if(!d)
  if(m.type==='video')return`<video controls src="${d}" style="max-width:90vw;max-height:48vh;border-radius:10px"></video>`;
  return`<audio controls src="${d}" style="width:min(520px,90vw)"></audio>`}
 let RM=null,HOST={on:false,qn:0,seq:0,open:false,winner:null,out:[],lk:0,lt:null},PH={name:null,sent:''},PHK='';
-(async()=>{try{if(window.claude&&claude.use){RM=await claude.use('room');if(RM){RM.onPeers(peersChanged);if(ONLINE&&hostAuthed()&&(S.game||S.role==='host')){setRole('host');S.phones=true;HOST.on=true;pubHost()}peersChanged()}}}catch(e){}})();
+(async()=>{try{if(window.claude&&claude.use){RM=await claude.use('room');if(RM){RM.onPeers(peersChanged);if(ONLINE&&hostAuthed()&&(S.game||S.role==='host')){setRole('host');S.phones=true;HOST.on=true;pubAv();pubHost()}peersChanged()}}}catch(e){}})();
+setInterval(()=>{try{if(!RM)return;if(HOST.on&&S.role==='host')pubHost();else if(S.role==='phone'&&PH.name){const pp={role:'player',pname:PH.name};if(PH.av)pp.avatar=PH.av;RM.presence(pp).catch(()=>{})}}catch(e){}},10000);
 function peersChanged(){syncAv();hostCheck();updPhone();viewSync();const c=$('conn');if(c)c.textContent=connText()}
 function connText(){if(!HOST.on)return'';if(!RM)return'📱 Связь недоступна';const n=RM.peers().filter(p=>p.presence&&p.presence.role==='player'&&p.presence.pname).map(p=>String(p.presence.pname));return'📱 Подключены: '+(n.length?[...new Set(n)].join(', '):'пока никого')}
 function setPhones(on){if(on&&!RM){note('Связь с телефонами недоступна. Перезагрузите страницу.');S.phones=false;render();return}
@@ -397,7 +415,7 @@ try{const a=JSON.parse(localStorage.getItem('svoya-av')||'[]');if(Array.isArray(
 const avSrc=id=>{const a=id&&AVL.find(x=>x.id===id);return a?a.d:null};
 const avTag=(id,px)=>{const d=avSrc(id);return d?`<img class="av" src="${d}" style="width:${px}px;height:${px}px">`:''};
 const avP=(name,px)=>{const p=S.players.find(x=>x.name===name);return p?avTag(p.av,px):''};
-(async()=>{try{if(window.claude&&claude.use){DBX=await claude.use('db');if(DBX)DBX.doc('avatars/list').onSnapshot(s=>{let loc=null;try{loc=localStorage.getItem('svoya-av')}catch(e){}if(loc!==null)return;const d=s.exists?s.data():null;if(d&&Array.isArray(d.items)){AVL=d.items.filter(x=>x&&x.id&&x.d);updPhone();const c=document.getElementById('avs');if(c)c.innerHTML=avGrid()}},()=>{})}}catch(e){}})();
+(async()=>{try{if(window.claude&&claude.use){DBX=await claude.use('db');if(DBX)DBX.doc('avatars/list').onSnapshot(s=>{let loc=null;try{loc=localStorage.getItem('svoya-av')}catch(e){}if(loc!==null){const dd=s.exists?s.data():null;if(AVL.length&&HOST.on&&!(dd&&Array.isArray(dd.items)&&dd.items.length))pubAv();return}const d=s.exists?s.data():null;if(d&&Array.isArray(d.items)){AVL=d.items.filter(x=>x&&x.id&&x.d);updPhone();const c=document.getElementById('avs');if(c)c.innerHTML=avGrid()}},()=>{})}}catch(e){}})();
 function saveAv(){try{localStorage.setItem('svoya-av',JSON.stringify(AVL))}catch(e){}pubAv()}
 function pubAv(){if(!DBX)return;let loc=null;try{loc=localStorage.getItem('svoya-av')}catch(e){}if(loc===null)return;DBX.doc('avatars/list').set({items:AVL}).catch(()=>{})}
 function avGrid(){return AVL.map(a=>`<span style="display:inline-block;position:relative;margin:4px"><img class="av" src="${a.d}" style="width:56px;height:56px;margin:0"><button class="bad" style="position:absolute;right:-6px;top:-6px;padding:0 6px;font-size:12px;border-radius:50%" onclick="delAv('${a.id}')">✕</button></span>`).join('')||'<span style="color:#9fb0ff">пока пусто</span>'}
@@ -471,7 +489,7 @@ const clipB=(s,n)=>{s=String(s==null?'':s);while(new Blob([s]).size>n)s=s.slice(
 const TTL=()=>`<div class="ttlw"><span class="tt"><h1 class="logo">СВОЯ ИГРА</h1><i class="onl-tag">online</i></span></div>`;
 function setRole(r){S.role=r;document.body.classList.toggle('viewer',r==='viewer')}
 function hostRole(){if(hostAuthed())hostGo();else askPass(hostGo)}
-function hostGo(){setRole('host');if(ONLINE&&RM){S.phones=true;HOST.on=true;pubHost()}go('setup')}
+function hostGo(){setRole('host');if(ONLINE&&RM){S.phones=true;HOST.on=true;pubAv();pubHost()}go('setup')}
 function phoneRole(){setRole('phone');go('phone')}
 function viewRole(){setRole('viewer');MU.unlocked=true;VW={it:-1,n:-1,sh:0,ok:-1,win:null,tmn:-1,seq:-1,sc:null,sig:''};go('viewer');viewSync()}
 function leaveView(){setRole(null);VW.it=-1;S.q=null;$('mod').innerHTML='';go('role')}
@@ -563,7 +581,8 @@ function typeQ(t){const el=$('qt');if(!el)return;clearInterval(TT);let i=0;el.te
 function say(t){try{if(!window.speechSynthesis||!t)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ru-RU';const v=speechSynthesis.getVoices().find(x=>x.lang&&x.lang.toLowerCase().startsWith('ru'));if(v)u.voice=v;speechSynthesis.speak(u)}catch(e){}}
 function showOk(i){S.q.ok=i;S.cats[S.q.ci].qs[S.q.r].done=true;saveGame();tmStop();clearInterval(TT);try{speechSynthesis.cancel()}catch(e){}if(HOST.on){clearTimeout(HOST.lt);HOST.lk=0;HOST.open=false;pubHost()}
  const q=S.cats[S.q.ci].qs[S.q.r];
- $('mod').innerHTML=`<div class="ov"><div style="font-size:clamp(36px,7vw,72px);color:#2ecc71;font-weight:800">✓ ВЕРНО!</div><div class="meta" style="margin-top:10px;font-size:22px">${avTag(S.players[i].av,56)}${esc(S.players[i].name)} +${V[S.q.r]}</div><div class="a" style="font-size:clamp(28px,5vw,56px);margin:24px 0">${esc(q.a)}${mediaHtml(q,'am')}</div><button class="ok" style="font-size:22px;padding:14px 28px" onclick="closeQ(true)">Продолжить</button></div>`}
+ $('mod').innerHTML=`<div class="ov"><div style="font-size:clamp(36px,7vw,72px);color:#2ecc71;font-weight:800">✓ ВЕРНО!</div><div class="meta" style="margin-top:10px;font-size:22px">${avTag(S.players[i].av,56)}${esc(S.players[i].name)} +${V[S.q.r]}</div><div class="a" style="font-size:clamp(28px,5vw,56px);margin:24px 0">${esc(q.a)}${mediaHtml(q,'am')}</div><div class="host-only" style="margin:0 0 22px;font-size:20px"><div style="color:#9fb0ff;margin-bottom:8px">Дополнительные баллы (например, за устный вопрос)</div><select id="bp" style="font-size:20px;padding:8px;border-radius:8px">${S.players.map((p,k)=>`<option value="${k}" ${k===i?'selected':''}>${esc(p.name)}</option>`).join('')}</select> <input id="bv" type="number" step="50" min="0" value="${V[0]}" style="font-size:20px;padding:8px;width:110px;border-radius:8px"> <button class="ok" onclick="bonus(1)">+ Добавить</button> <button class="bad" onclick="bonus(-1)">− Снять</button><div id="bl" style="margin-top:8px;color:#ffd54a"></div></div><button class="ok" style="font-size:22px;padding:14px 28px" onclick="closeQ(true)">Продолжить</button></div>`}
+function bonus(sg){const k=+$('bp').value,v=Math.abs(parseInt($('bv').value,10)||0);if(!v||!S.players[k])return;S.players[k].score+=sg*v;saveGame();sfx(sg>0?1:0);pubHost();const l=$('bl');if(l)l.textContent+=(l.textContent?'   ':'')+S.players[k].name+' '+(sg>0?'+':'−')+v+' (итого '+S.players[k].score+')'}
 function showA(){tmStop();const e=$('tm');if(e)e.textContent='';S.q.show=true;$('ans').style.display='block';$('showb').style.display='none';pubHost()}
 async function openQ(ci,r){const q=S.cats[ci].qs[r];if(q.m)await loadM(q.m.id);if(q.am)await loadM(q.am.id);if(ONLINE&&HOST.on&&window.mediaUrl){await upMedia(q.m);await upMedia(q.am)}S.q={ci,r,show:false,wrong:[]};$('mod').innerHTML=modal();typeQ(q.q);if(S.voice)say(q.q);VQ++;VT=0;hostOpen()}
 function modal(){
@@ -571,7 +590,7 @@ function modal(){
  return `<div class="ov"><div class="meta">${esc(c.name)} — ${v}</div><div class="q" id="qt"></div><div id="mslot">${mediaHtml(q)}</div><div id="win" style="font-size:30px;color:#2ecc71;margin:6px 0"></div><div id="tm" onclick="tmStart()" title="Нажмите, чтобы запустить заново" style="font-size:44px;font-weight:800;color:#ffd54a;margin:4px 0;cursor:pointer"></div><div style="margin:8px"><button class="sec" onclick="say(S.cats[S.q.ci].qs[S.q.r].q)">🔊 Озвучить</button></div>`+
  `<div class="a" id="ans" style="display:none">Ответ: ${esc(q.a)}${mediaHtml(q,'am')}</div><button id="showb" onclick="showA()">Показать ответ</button>`+
  `<div class="score" style="margin-top:20px">`+S.players.map((p,i)=>`<div class="pl" style="cursor:default">${avTag(p.av,36)}${esc(p.name)}<div class="row" style="justify-content:center"><button class="ok" id="b${i}" onclick="ans(${i},1)">✓ +${v}</button><button class="bad" id="c${i}" onclick="ans(${i},0)">✕ −${v}</button></div></div>`).join('')+`</div>
- <div class="btns"><button class="sec" onclick="closeQ(true)">Никто не ответил</button><button class="sec" onclick="closeQ(false)">Отмена (вернуть вопрос)</button></div></div>`;
+ <div class="btns"><button class="sec" onclick="closeQ(true)">Никто не ответил</button><button class="sec" onclick="closeQ(false)">Отмена (вернуть вопрос)</button><button class="bad" onclick="askEmergency()">⛔ Экстренно завершить игру</button></div></div>`;
 }
 function ans(i,ok){const v=V[S.q.r];
  if(ok){sfx(1);S.players[i].score+=v;S.cur=i;showOk(i)}
@@ -580,7 +599,7 @@ function closeQ(done){if(done)S.cats[S.q.ci].qs[S.q.r].done=true;S.q=null;tmStop
  if(S.cats.every(c=>c.qs.every(q=>q.done||(!q.q.trim()&&!q.m))))endRound();else render()}
 function inter(){
  const s=[...S.players].sort((a,b)=>b.score-a.score);
- return `<h1>Итоги ${S.ri+1} раунда</h1><div class="center" style="text-align:center">`+s.map((p,i)=>`<div class="res">${i===0?'🥇 ':(i+1)+'. '}${avTag(p.av,40)}${esc(p.name)} — <b style="color:var(--gold)">${p.score}</b></div>`).join('')+`<div class="btns"><button onclick="nextRound()">Раунд ${S.ri+2} ▶</button></div></div>`;
+ return `<h1>Итоги ${S.ri+1} раунда</h1><div class="center" style="text-align:center">`+s.map((p,i)=>`<div class="res">${i===0?'🥇 ':(i+1)+'. '}${avTag(p.av,40)}${esc(p.name)} — <b style="color:var(--gold)">${p.score}</b></div>`).join('')+`<div class="btns"><button onclick="nextRound()">Раунд ${S.ri+2} ▶</button><button class="bad" onclick="askEmergency()">⛔ Экстренно завершить</button></div></div>`;
 }
 function nextRound(){S.ri++;S.intro=true;go('board');setTimeout(preUp,1500)}
 function endRound(){go(S.ri<S.rounds.length-1?'inter':'final')}

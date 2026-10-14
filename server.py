@@ -323,14 +323,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if p is None:
                     p = {"presence": {}, "updatedAt": now_ms(), "n": 0}
                     peers[cid] = p
+                before = json.dumps(p["presence"], sort_keys=True)
                 for k, v in patch.items():
                     if v is None:
                         p["presence"].pop(k, None)
                     else:
                         p["presence"][k] = v
-                p["updatedAt"] = now_ms()
-                peers_ver += 1
-                cond.notify_all()
+                if json.dumps(p["presence"], sort_keys=True) != before:
+                    p["updatedAt"] = now_ms()
+                    peers_ver += 1
+                    cond.notify_all()
             return self._json({"ok": True})
         if path == "/api/leave":
             cid = str(body.get("id", ""))[:64]
