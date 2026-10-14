@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: svoya-igra
+    runtime: python
+    plan: free
+    buildCommand: echo ready
+    startCommand: python server.py
+    envVars:
+      - key: CLOUD
+        value: "1"
