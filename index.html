@@ -28,9 +28,12 @@ input,textarea{font:inherit;border-radius:8px;border:1px solid #4a5bb0;backgroun
 .cell{background:var(--card);color:var(--gold);font-size:28px;font-weight:800;border-radius:8px;min-height:72px}
 .cell.done{background:var(--card2);color:transparent;cursor:default}
 .cell.empty{opacity:.2;cursor:default}
-.ov{position:fixed;inset:0;background:rgba(5,10,35,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;overflow:auto}
-.ov .q{font-size:clamp(22px,4vw,44px);max-width:900px;margin:16px 0}
-.ov .a{font-size:clamp(20px,3.4vw,34px);color:var(--gold);margin:10px 0}
+:root{--mh:max(26vh,calc(100vh - 640px));--mha:max(26vh,calc(100vh - 660px))}body.viewer{--mh:62vh;--mha:52vh}
+.ctl{position:fixed;left:0;right:0;bottom:0;background:rgba(5,10,35,.97);padding:6px 10px 10px;z-index:5;border-top:1px solid #243063}.ctl .score{margin:0!important}.ctl .btns{margin-top:8px}body.viewer .ctl,body.viewer .ctl-sp{display:none!important}
+.ov>:first-child{margin-top:auto}.ov>:last-child{margin-bottom:auto}
+.ov{position:fixed;inset:0;background:rgba(5,10,35,.96);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;text-align:center;overflow:auto}
+.ov .q{font-size:clamp(28px,5.4vw,84px);max-width:96vw;line-height:1.2;margin:12px 0;font-weight:600}
+.ov .a{font-size:clamp(28px,5.4vw,84px);max-width:96vw;line-height:1.2;color:var(--gold);margin:10px 0}
 .ov .meta{color:#9fb0ff}
 .ed{background:var(--card2);border-radius:12px;padding:12px;margin:12px 0}
 .ed .qr{display:grid;grid-template-columns:50px 2fr 1fr 74px 74px;gap:6px;margin:6px 0;align-items:center}
@@ -262,8 +265,9 @@ function mediaCell(ci,r,q,k){k=k||'m';const m=q[k],ic={image:'🖼',audio:'🎵'
  if(m)return`<span title="${esc(m.name)}">${ans?'✓':''}${ic[m.type]} </span><button class="bad" style="padding:6px 10px" onclick="detach(${ci},${r},'${k}')">✕</button>`;
  return`<button class="sec" style="padding:6px 10px" title="${ans?'Файл к ОТВЕТУ (картинка, аудио или видео)':'Файл к вопросу (картинка, аудио или видео)'}" onclick="this.nextElementSibling.click()">${ans?'✓📎':'📎'}</button><input type="file" hidden accept="image/*,audio/*,video/*" onchange="attach(${ci},${r},this,'${k}')">`}
 function mediaHtml(q,k){const m=q[k||'m'];if(!m)return'';const d=MC[m.id];if(!d)return'<div class="meta">(файл не найден на этом устройстве)</div>';
- if(m.type==='image')return`<img src="${d}" style="max-width:90vw;max-height:48vh;border-radius:10px">`;
- if(m.type==='video')return`<video controls src="${d}" style="max-width:90vw;max-height:48vh;border-radius:10px"></video>`;
+ const H=(k==='am'?'var(--mha)':'var(--mh)');
+ if(m.type==='image')return`<img src="${d}" style="height:${H};max-width:96vw;object-fit:contain;border-radius:10px">`;
+ if(m.type==='video')return`<video controls src="${d}" style="height:${H};max-width:96vw;object-fit:contain;border-radius:10px"></video>`;
  return`<audio controls src="${d}" style="width:min(520px,90vw)"></audio>`}
 /* Ответ: если есть медиафайл, он идёт сверху, а текст ответа под ним по центру */
 function ansHtml(q,pre){const mh=mediaHtml(q,'am'),t=(pre?'Ответ: ':'')+esc(q.a);return mh?`<div style="text-align:center">${mh}</div><div style="text-align:center;margin-top:14px">${t}</div>`:t}
@@ -649,9 +653,9 @@ function typeQ(t){const el=$('qt');if(!el)return;clearInterval(TT);let i=0;el.te
 function say(t){try{if(!window.speechSynthesis||!t)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ru-RU';const v=speechSynthesis.getVoices().find(x=>x.lang&&x.lang.toLowerCase().startsWith('ru'));if(v)u.voice=v;speechSynthesis.speak(u)}catch(e){}}
 function showOk(i){S.q.ok=i;S.cats[S.q.ci].qs[S.q.r].done=true;saveGame();tmStop();clearInterval(TT);try{speechSynthesis.cancel()}catch(e){}if(HOST.on){clearTimeout(HOST.lt);HOST.lk=0;HOST.open=false;pubHost()}
  const q=S.cats[S.q.ci].qs[S.q.r];
- $('mod').innerHTML=`<div class="ov"><div style="font-size:clamp(36px,7vw,72px);color:#2ecc71;font-weight:800">✓ ВЕРНО!</div><div class="meta" style="margin-top:10px;font-size:22px">${avTag(S.players[i].av,56)}${esc(S.players[i].name)} +${V[S.q.r]}</div><div class="a" style="font-size:clamp(28px,5vw,56px);margin:24px 0">${ansHtml(q,false)}</div><div class="host-only" style="margin:0 0 22px;font-size:20px"><div style="color:#9fb0ff;margin-bottom:8px">Дополнительные баллы (например, за устный вопрос)</div><select id="bp" style="font-size:20px;padding:8px;border-radius:8px">${S.players.map((p,k)=>`<option value="${k}" ${k===i?'selected':''}>${esc(p.name)}</option>`).join('')}</select> <input id="bv" type="number" step="50" min="0" value="${V[0]}" style="font-size:20px;padding:8px;width:110px;border-radius:8px"> <button class="ok" onclick="bonus(1)">+ Добавить</button> <button class="bad" onclick="bonus(-1)">− Снять</button><div id="bl" style="margin-top:8px;color:#ffd54a"></div></div><button class="ok" style="font-size:22px;padding:14px 28px" onclick="closeQ(true)">Продолжить</button></div>`}
+ $('mod').innerHTML=`<div class="ov" style="--mha:max(28vh,calc(100vh - 500px))"><div style="font-size:clamp(36px,7vw,72px);color:#2ecc71;font-weight:800">✓ ВЕРНО!</div><div class="meta" style="margin-top:10px;font-size:22px">${avTag(S.players[i].av,56)}${esc(S.players[i].name)} +${V[S.q.r]}</div><div class="a" style="margin:18px 0">${ansHtml(q,false)}</div><div class="host-only" style="margin:0 0 22px;font-size:20px"><div style="color:#9fb0ff;margin-bottom:8px">Дополнительные баллы (например, за устный вопрос)</div><select id="bp" style="font-size:20px;padding:8px;border-radius:8px">${S.players.map((p,k)=>`<option value="${k}" ${k===i?'selected':''}>${esc(p.name)}</option>`).join('')}</select> <input id="bv" type="number" step="50" min="0" value="${V[0]}" style="font-size:20px;padding:8px;width:110px;border-radius:8px"> <button class="ok" onclick="bonus(1)">+ Добавить</button> <button class="bad" onclick="bonus(-1)">− Снять</button><div id="bl" style="margin-top:8px;color:#ffd54a"></div></div><button class="ok" style="font-size:22px;padding:14px 28px" onclick="closeQ(true)">Продолжить</button></div>`}
 function bonus(sg){const k=+$('bp').value,v=Math.abs(parseInt($('bv').value,10)||0);if(!v||!S.players[k])return;S.players[k].score+=sg*v;saveGame();sfx(sg>0?1:0);pubHost();const l=$('bl');if(l)l.textContent+=(l.textContent?'   ':'')+S.players[k].name+' '+(sg>0?'+':'−')+v+' (итого '+S.players[k].score+')'}
-function showA(){tmStop();const e=$('tm');if(e)e.textContent='';S.q.show=true;$('ans').style.display='block';$('showb').style.display='none';pubHost()}
+function showA(){tmStop();const e=$('tm');if(e)e.textContent='';S.q.show=true;$('ans').style.display='block';$('showb').style.display='none';{const cq=S.cats[S.q.ci].qs[S.q.r],ms=$('mslot');if(ms&&cq.am&&cq.am.type!=='audio')ms.style.display='none'}pubHost()}
 let OPENING=false;
 async function openQ(ci,r){if(S.q||OPENING)return;OPENING=true;try{const q=S.cats[ci].qs[r];if(q.m)await loadM(q.m.id);if(q.am)await loadM(q.am.id);if(ONLINE&&HOST.on&&window.mediaUrl){await upMedia(q.m);await upMedia(q.am)}S.q={ci,r,show:false,wrong:[]};VQ++;VT=0;if(HOST.on&&RM&&holdPeers().length)startHold();else releaseQ()}finally{OPENING=false}}
 /* Вопрос показывается, только когда сигнал дошёл до всех подключённых экранов зрителей и телефонов (или истекло время ожидания) */
@@ -668,10 +672,10 @@ function releaseQ(){clearTimeout(HOLD.to);const h=$('hold');if(h)h.remove();if(!
 function cancelHold(){clearTimeout(HOLD.to);const h=$('hold');if(h)h.remove();HOST.hd=0;S.q=null;hostClose()}
 function modal(){
  const {ci,r,show,wrong}=S.q;const c=S.cats[ci],q=c.qs[r],v=V[r];
- return `<div class="ov"><div class="meta">${esc(c.name)} — ${v}</div><div class="q" id="qt"></div><div id="mslot">${mediaHtml(q)}</div><div id="win" style="font-size:30px;color:#2ecc71;margin:6px 0"></div><div id="tm" onclick="tmStart()" title="Нажмите, чтобы запустить заново" style="font-size:44px;font-weight:800;color:#ffd54a;margin:4px 0;cursor:pointer"></div><div style="margin:8px"><button class="sec" onclick="say(S.cats[S.q.ci].qs[S.q.r].q)">🔊 Озвучить</button></div>`+
+ return `<div class="ov"><div class="meta" style="font-size:clamp(16px,2vw,30px)">${esc(c.name)} — ${v}</div><div class="q" id="qt"></div><div id="mslot">${mediaHtml(q)}</div><div id="win" style="font-size:30px;color:#2ecc71;margin:6px 0"></div><div id="tm" onclick="tmStart()" title="Нажмите, чтобы запустить заново" style="font-size:clamp(44px,6vw,90px);font-weight:800;color:#ffd54a;margin:4px 0;cursor:pointer"></div><div style="margin:8px"><button class="sec" onclick="say(S.cats[S.q.ci].qs[S.q.r].q)">🔊 Озвучить</button></div>`+
  `<div class="a" id="ans" style="display:none">${ansHtml(q,true)}</div><button id="showb" onclick="showA()">Показать ответ</button>`+
- `<div class="score" style="margin-top:20px">`+S.players.map((p,i)=>`<div class="pl" style="cursor:default">${avTag(p.av,36)}${esc(p.name)}<div class="row" style="justify-content:center"><button class="ok" id="b${i}" onclick="ans(${i},1)">✓ +${v}</button><button class="bad" id="c${i}" onclick="ans(${i},0)">✕ −${v}</button></div></div>`).join('')+`</div>
- <div class="btns"><button class="sec" onclick="closeQ(true)">Никто не ответил</button><button class="sec" onclick="closeQ(false)">Отмена (вернуть вопрос)</button><button class="bad" onclick="askEmergency()">⛔ Экстренно завершить игру</button></div></div>`;
+ `<div class="ctl-sp" style="height:190px;flex:none"></div><div class="ctl"><div class="score" style="margin-top:20px">`+S.players.map((p,i)=>`<div class="pl" style="cursor:default">${avTag(p.av,36)}${esc(p.name)}<div class="row" style="justify-content:center"><button class="ok" id="b${i}" onclick="ans(${i},1)">✓ +${v}</button><button class="bad" id="c${i}" onclick="ans(${i},0)">✕ −${v}</button></div></div>`).join('')+`</div>
+ <div class="btns"><button class="sec" onclick="closeQ(true)">Никто не ответил</button><button class="sec" onclick="closeQ(false)">Отмена (вернуть вопрос)</button><button class="bad" onclick="askEmergency()">⛔ Экстренно завершить игру</button></div></div></div>`;
 }
 function ans(i,ok){const v=V[S.q.r];
  if(ok){sfx(1);S.players[i].score+=v;S.cur=i;showOk(i)}
