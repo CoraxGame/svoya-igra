@@ -29,6 +29,13 @@ input,textarea{font:inherit;border-radius:8px;border:1px solid #4a5bb0;backgroun
 .cell.done{background:var(--card2);color:transparent;cursor:default}
 .cell.empty{opacity:.2;cursor:default}
 :root{--mh:max(26vh,calc(100vh - 640px));--mha:max(26vh,calc(100vh - 660px))}body.viewer{--mh:62vh;--mha:52vh}
+.ov>.ctl-sp{margin-bottom:auto}
+#app.bd{max-width:98vw;padding:8px 1vw}
+#app.bd .grid{height:calc(100vh - 290px);grid-auto-rows:1fr;gap:clamp(6px,.7vw,14px);grid-template-columns:minmax(120px,1.5fr) repeat(5,1fr)!important}
+body.viewer #app.bd .grid{height:calc(100vh - 170px)}
+#app.bd .cell{font-size:clamp(28px,4.6vw,96px);min-height:0}
+#app.bd .cat{font-size:clamp(15px,1.9vw,38px);min-height:0}
+#app.bd .pl{font-size:clamp(16px,1.6vw,30px);padding:6px 1.4vw}#app.bd .pl b{font-size:clamp(22px,2.6vw,48px)}
 .ctl{position:fixed;left:0;right:0;bottom:0;background:rgba(5,10,35,.97);padding:6px 10px 10px;z-index:5;border-top:1px solid #243063}.ctl .score{margin:0!important}.ctl .btns{margin-top:8px}body.viewer .ctl,body.viewer .ctl-sp{display:none!important}
 .ov>:first-child{margin-top:auto}.ov>:last-child{margin-bottom:auto}
 .ov{position:fixed;inset:0;background:rgba(5,10,35,.96);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;text-align:center;overflow:auto}
@@ -217,7 +224,7 @@ const $=id=>document.getElementById(id);
 const go=s=>{S.screen=s;render()};
 
 function render(){
- const A=$('app');saveGame();finalStop();introStop();
+ const A=$('app');A.classList.toggle('bd',S.screen==='board');saveGame();finalStop();introStop();
  if(S.screen==='setup')A.innerHTML=setup();
  else if(S.screen==='board')A.innerHTML=(INTRO=!!S.intro,INTRO&&VIT++,S.intro=false,board()),INTRO&&introAnim();
  else if(S.screen==='edit')A.innerHTML=editor();
