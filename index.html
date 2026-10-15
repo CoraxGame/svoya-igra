@@ -393,9 +393,9 @@ async function introAnim(){
   if(!ok())return;
   const c=cats[i],r=c.getBoundingClientRect();
   const el=document.createElement('div');el.className='cat introov';el.textContent=S.cats[i].name;
-  el.style.cssText=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;z-index:80;margin:0;box-shadow:0 0 40px rgba(255,213,74,.5)`;
+  el.style.cssText=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;z-index:80;margin:0;min-height:0;font-size:${getComputedStyle(c).fontSize};box-shadow:0 0 40px rgba(255,213,74,.5)`;
   document.body.appendChild(el);bd.style.opacity=1;
-  const sc=Math.min(innerWidth*.8/r.width,innerHeight*.3/r.height),dx=innerWidth/2-(r.left+r.width/2),dy=innerHeight/2-(r.top+r.height/2),mid=`translate(${dx}px,${dy}px) scale(${sc})`;
+  const sc=Math.min(innerWidth*.8/r.width,innerHeight*.42/r.height),dx=innerWidth/2-(r.left+r.width/2),dy=innerHeight/2-(r.top+r.height/2),mid=`translate(${dx}px,${dy}px) scale(${sc})`;
   tone(330,0,.3,'triangle',.25);tone(660,.12,.45,'sine',.25);tone(990,.2,.5,'sine',.18);
   await anim(el,[{transform:`translate(${dx}px,${dy}px) scale(0)`,opacity:0},{transform:mid,opacity:1}],{duration:500,easing:'cubic-bezier(.2,1.4,.4,1)',fill:'forwards'});
   await sleep(900);if(!ok())return;
